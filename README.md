@@ -1,8 +1,8 @@
-**PRATIQUE POO**
+# **PRATIQUE POO**
 
 La POO permet d'avoir un meilleur organisation grâce aux fonctions.
 
-**Refactoriser le code sous forme de fonction :**
+## **Refactoriser le code sous forme de fonction :**
 
 La factorisation permet de centraliser le code.
 
@@ -187,7 +187,7 @@ redirect("article.php?id=" . $article_id);
 // save-comment
 redirect("article.php?id=" . $article_id);
 ````
-**Refactoriser des requêtes SQL**:
+## **Refactoriser des requêtes SQL**:
 
 **index.php**
 ````php
@@ -240,8 +240,8 @@ $pageTitle = "Accueil";
 render('articles/index' , compact('pageTitle', 'articles'));
 ````
 
-article.php
-nous allon effectuer la même démarche  mais avec une variable $id, ce qui permet d'afficher un seul article plutôt que contient une page unique pour afficher un seul.
+**article.php**
+nous allons effectuer la même démarche  mais avec une variable $id, ce qui permet d'afficher un seul article plutôt que contient une page unique pour afficher un seul.
 ````php
 $query = $pdo->prepare("SELECT * FROM articles WHERE id = :article_id");
 // On exécute la requête en précisant le paramètre :article_id 
@@ -309,7 +309,7 @@ $query->execute(['id' => $id]);
 ````
 **database.php**
 ````php
-/*function qui recevra l'id de l'article et ne renvoi rien*/
+/*function suppression de l'article par son $id et ne renvoi rien*/
 function deleteArticle(int $id) : void {
     $pdo = getPdo();
     $query = $pdo->prepare('DELETE FROM articles WHERE id = :id');
@@ -353,7 +353,7 @@ function deleteComment (int $id) : void {
 ````
 **database.php**
 ````php
-/* save-content / function qui va permettre d'inserer un commentaire dans chaque champ de type string string $author,
+/* save-comment / function qui va permettre d'inserer un commentaire dans chaque champ de type string string $author,
 * string $content,string $article_id */
     function insertComment(string $author,string $content,string $article_id) : void {
         $pdo = getPdo();
@@ -361,8 +361,254 @@ function deleteComment (int $id) : void {
         content = :content, article_id = :article_id, created_at = NOW()');
         $query->execute(compact('author', 'content', 'article_id'));
     }
+````
+## **Les classes**(models):
+L'organisation du code utilisera le **MVC**
+Models = pour l'accès aux données 
+**Controller** = il va gérer l'interaction  entre les vues et les modèles et l'utilisateur
+Classe statiques = pour les utilities
+Dans la programmation orienté objet on parle de model de données lorsque on veut accéder à des donner (bdd,fichier, xml...).
+Nous créeons le fichier "Article.php" avec un A majuscule car c'est une classe.
+Il va s'y trouver les données qui servent à manipuler les données des articles
 
+La **public function findAllArticles() : array{}** = elle est mise en public pour pouvoir être appelé
+L'ensemnle des functions qui correspondant aux articles sont dans un seul est même fichier, cela facilite l'organisation et rend le code beaucoup plus lisible :
+**Article.php**
+````php
+require_once ('libraries/database.php');
+class Article {
+     /** index.php : function findAllArticles() qui va nous permettre 
+    * de récuperer les tous les articles de la table article
+    * classer par date de création
+   * @return array
+  */
+public function findAllArticles() : array {
+    $pdo = getPdo();
+    $resultats = $pdo->query('SELECT * FROM articles ORDER BY created_at DESC');
+    // On fouille le résultat pour en extraire les données réelles
+    $articles = $resultats->fetchAll();
+    return $articles;
+}
+
+/** article.php = findArticle(int $id):array = sert a recuperer 1 article 
+ * via son id et le contenu correspondant à l'id 
+ * sous forme de tableau
+ * @param integer $id
+ * @return void 
+ */
+public function findArticle(int $id){
+  $pdo = getPdo();
+  $query = $pdo->prepare("SELECT * FROM articles WHERE id = :article_id");
+// On exécute la requête en précisant le paramètre :article_id 
+  $query->execute(['article_id' => $id]);
+// On fouille le résultat pour en extraire les données réelles de l'article
+  $article = $query->fetch();
+  return $article;
+}
+
+/*delete-article.php function qui recevra l'id de l'article et ne renvoi rien*/
+public function deleteArticle(int $id) : void {
+  $pdo = getPdo();
+  $query = $pdo->prepare('DELETE FROM articles WHERE id = :id');
+  $query->execute(['id' => $id]);
+}
+}
+````
+**Comment.php**
+````php
+
+require_once ('libraries/database.php');
+
+class Comment{
+    /** article.php findAllComments nous permet de recuperer les commentaires 
+ * qui correspondent à l'identifiant de l'article 
+ * @return array
+*/
+public function findAllWithArticle(int $article_id) : array {
+    $pdo = getPdo();
+    $query = $pdo->prepare("SELECT * FROM comments WHERE article_id = :article_id");
+    $query->execute(['article_id' => $article_id]);
+    $commentaires = $query->fetchAll();
+    return $commentaires;
+}
+
+
+/** Vérification de l'existence du commentaire par son id
+*@param integer $id
+*/
+public function find(int $id){
+    $pdo = getPdo();
+    $query = $pdo->prepare('SELECT * FROM comments WHERE id = :id');
+    $query->execute(['id' => $id]);
+    $comment = $query->fetch();
+    return $comment;
+  }
+
+/**  save-comment / function qui va permettre d'inserer un commentaire dans la base de données
+* @param string $author
+* @param string $content
+* @param integer $article_id
+* @param void
+ */
+    public function insert(string $author,string $content,string $article_id) : void {
+        $pdo = getPdo();
+        $query = $pdo->prepare('INSERT INTO comments SET author = :author, 
+        content = :content, article_id = :article_id, created_at = NOW()');
+        $query->execute(compact('author', 'content', 'article_id'));
+    }
+
+    /**  delete-comment function qui va permettre de recuperer l'id de 
+*l'article avant de le supprimer et qui ne renvoi rien
+ * @param integer $id
+ * @return void */
+public function delete(int $id) : void {
+    $pdo = getPdo();
+    $query = $pdo->prepare('DELETE FROM comments WHERE id = :id');
+    $query->execute(['id' => $id]);
+  }
+}
+````
+Les nom des méthodes sont modifiés donc il fauit bien penser à les actualiser dans les fichiers concernés pour chaque function appelée.
+
+Pour éviter la répétition de **$pdo= getPdo()** dans différentes fonction de notre objet Article, nous allons refactoriser cette méthode qui sera appliquée dès la naissance de notre objet,
+Le constructeur nous permet cela (comportement appelé dès que l'on crée une  instance de cette class)
+````php
+private $pdo;
+public function __construct() {
+  $this->pdo = getPdo();
+}
+// Exemple sur une fonction 
+public function findAll() : array {
+    $resultats = $this->pdo->query('SELECT * FROM articles ORDER BY created_at DESC');
+    // On fouille le résultat pour en extraire les données réelles
+    $articles = $resultats->fetchAll();
+    return $articles;
+}
 ````
 
+Le code ci dessus va être mis en commun pour nos deux objets, nous créeons un fichier Models.php qui contiendra donc ce code que l'on va faire hérité à nos deux classes :
+**Models.php**
+````php
+require_once ('libraries/database.php');
+class Model {
+    protected $pdo;
+    public function __construct() {
+    $this->pdo = getPdo();
+  }
+}
+````
+La propriété utilisele mot clé protected afin de permettre au classe fille de pouvoir utilisé cette function extends nous permet cela : 
+**Comment.php**
+````php
+class Comment extends Model
+````
+Ne pas oublier de supprimer les require de la database  des fichers Article et Comment en effet le fichier Model sera require dans chaque classe et Model devra bien évidemmment avoir le require connexion à la database.
+````php
+ require_once ('libraries/database.php');
+class Model {
+    protected $pdo;
+    public function __construct() {
+    $this->pdo = getPdo();
+  }
+}
+````
 
+## Classes et Héritage :
+La **fonction find** va être mise en commun sur le principe de la méthode de l'héritage grace à notre class parent Model : 
+**Article.php**
+````php
+public function find(int $id){
+    $query = $this->pdo->prepare("SELECT * FROM articles WHERE id = :article_id");
+  // On exécute la requête en précisant le paramètre :article_id 
+    $query->execute(['article_id' => $id]);
+  // On fouille le résultat pour en extraire les données réelles de l'article
+    $article = $query->fetch();
+    return $article;
+  }
+````
 
+**Model.php**
+````php
+// $table à le mot clé protected car elle sera utilisée unqiuement par es classes qui héritent de Model
+protected $table;
+
+public function find(int $id){
+    $query = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE id = :id");
+  // On exécute la requête en précisant le paramètre :article_id 
+    $query->execute(['id' => $id]);
+  // On fouille le résultat pour en extraire les données réelles de l'article
+    $item = $query->fetch();
+    return $item;
+  }
+````
+**Article.php** et **Comment.php**:
+````php
+protected  $table = 'articles';
+protected  $table = 'comments';
+````
+
+La **function delete** sera aussi refactoriser afin qu'elle soit utiliser par les deuc lasses sur le principe de l'héritage
+````php
+public function delete(int $id) : void {
+    $query = $this->pdo->prepare("DELETE FROM {$this->table} WHERE id = :id");
+    $query->execute(['id' => $id]);
+  }
+````
+La **function findAll** est également refactoriser
+**Articles**
+````php
+  public function findAll() : array {
+    $resultats = $this->pdo->query('SELECT * FROM articles ORDER BY created_at DESC');
+    // On fouille le résultat pour en extraire les données réelles
+    $articles = $resultats->fetchAll();
+    return $articles;
+}
+````
+La **function findAll** on va indique qu'elle peut recevoir **$order = ""**
+et si la variable $order n'est pas vide, on ajoute **"ORDER BY"** et  et la phrase ajoutée à **. $order;**
+````php
+  public function findAll(?string $order = "") : array {
+    $sql = "SELECT * FROM {$this->table}";
+    if($order){
+        $sql .= " ORDER BY "  . $order;
+    }
+    $resultats = $this->pdo->query($sql);
+    // On fouille le résultat pour en extraire les données réelles
+    $articles = $resultats->fetchAll();
+    return $articles;
+}
+````
+**index.php**
+On indique **$order** dans notre fichier **index.php** la où est appelée notre function
+````php
+ /** 2. Récupération des articles
+ */
+$articles = $model->findAll("created_at DESC");
+````
+la classe Model est dynamique car elle agit sur les tables.
+
+La classe User est crée elle va nous permettre de récupérer l'intégralité de la table users, toujours en utilisant le méthode de l'héritage :
+**User.php**
+````php
+require_once('libraries/models/Model.php');
+class User extends Model{
+    // On indique quelle table  doit être appelé quand on veut traiter des utilisateurs
+    protected $table = "users";
+}
+````
+**index.php** on appel la fonction **findAll**
+````php
+require_once ('libraries/models/User.php');
+$userModel = new User();
+$users = $userModel->findAll();
+var_dump($users);
+die();
+````
+Tous les utilisateur s'affiche sous forme d'un tableau associatif :
+![capture d'ecran](img_readme/users.PNG)
+
+La class Model est une idée, pour empêcher qu' un developpeur utilise la class Model on empêche la création d'objet (l'instancie)  dans la class Model on utilise  l'abstraction :
+````php
+abstract class Model{}
+````
+## Les Namespaces : 
