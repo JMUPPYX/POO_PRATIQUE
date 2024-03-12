@@ -1,10 +1,11 @@
 <?php
- require_once ('libraries/database.php');
+namespace Models;
+
 abstract class Model {
     protected $pdo;
     protected $table;
     public function __construct() {
-    $this->pdo = getPdo();
+    $this->pdo = \Database::getPdo();
   }
 
   /** index.php : function findAllArticles() qui va nous permettre 

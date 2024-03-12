@@ -457,7 +457,7 @@ public function find(int $id){
         $query->execute(compact('author', 'content', 'article_id'));
     }
 
-    /**  delete-comment function qui va permettre de recuperer l'id de 
+/**  delete-comment function qui va permettre de recuperer l'id de 
 *l'article avant de le supprimer et qui ne renvoi rien
  * @param integer $id
  * @return void */
@@ -486,7 +486,8 @@ public function findAll() : array {
 }
 ````
 
-Le code ci dessus va être mis en commun pour nos deux objets, nous créeons un fichier Models.php qui contiendra donc ce code que l'on va faire hérité à nos deux classes :
+Le code ci dessus va être mis en commun pour nos deux objets, nous créeons un fichier Models.php qui contiendra donc ce code que l'on va faire hérité à nos deux classes 
+Les model qui ont des fonctionnalitées qui nous permettent de travailler sur les tables de la BDD :
 **Models.php**
 ````php
 require_once ('libraries/database.php');
@@ -611,4 +612,400 @@ La class Model est une idée, pour empêcher qu' un developpeur utilise la class
 ````php
 abstract class Model{}
 ````
-## Les Namespaces : 
+## Les Namespaces et Classes : 
+On va créer des classes qui nous permettent d'avoir une intéraction avec l'utilisateur.
+Les classes d'action = les interactions entre l'utilisateur et le site.
+La création du dossier **controllers** nous permet stocker les codes qui vont gérer les différentes actions
+
+On ne pas appeler deux classes du même nom, on utilise les namespace pour ça, cela indique que  sont des fichiers dans des dossiers différents.
+On va indiquer dans le dossier models  pour les fichiers Article, Comment,Model et User que le namespace est Models : 
+````php
+namespace Models;
+
+La même chose est faite pour le fichier Article du dossier controllers : 
+
+````php
+namespace Controllers;
+````
+
+On indique quelle classe est instanciée en fonction du dossier dans lequel elle se trouve, effectivement nous avons deux classes du même nom ce sont ces deux namespace (Controllers et Models) qui différencient les classes : 
+````php
+  $model = new \Models\Article();
+````
+  **index.php**
+  Dans le fichier index.php la class Article est instancié en indiquant à quelle dossier on fait référence,
+  La même chose est effectuée sur les dossiers concernés: 
+````php
+require_once ('libraries/controllers/Article.php');
+ $controller = new \Controllers\Article ();
+ $controller->index();
+````
+
+On va utiliser la **function __construct** pour éviter la répétition concernant l'instance de Article.
+**Article.php (controllers)**
+ ````php
+    private $model;
+    public function __construct() {
+        $this->model = new \Models\Article();
+    }
+ ````
+ Le fichier **Article.php** est crée, ce fichier correspond aux actions de la classe article, voici le code en entier : 
+````php
+
+namespace Controllers;
+require_once ('libraries/utils.php');
+require_once ('libraries/models/Article.php');
+require_once ('libraries/models/Comment.php');
+// require_once ('libraries/models/User.php');
+class Article{
+
+    private $model;
+    public function __construct() {
+        $this->model = new \Models\Article();
+    }
+    public function index(){
+        //montrer la liste
+        
+    /**
+     * AFFICHE LA PAGE D'ACCUEIL !
+     * 
+     * On va donc se connecter à la base de données, récupérer les articles du plus récent au plus ancien (SELECT * FROM articles ORDER BY created_at DESC)
+     * puis on va boucler dessus pour afficher chacun d'entre eux
+     */
+    
+
+    /**
+     * 2. Récupération des articles
+     */
+    $articles = $this->model->findAll("created_at DESC");
+
+    /**
+     * 3. Affichage
+     */
+    $pageTitle = "Accueil";
+    render('articles/index' , compact('pageTitle', 'articles'));
+        }
+
+    public function show(){
+        //montrer 1 article
+/**
+*  AFFICHAGE D' UN ARTICLE ET SES COMMENTAIRES !
+* 
+* On doit d'abord récupérer le paramètre "id" qui sera présent en GET et vérifier son existence
+* Si on n'a pas de param "id", alors on affiche un message d'erreur !
+* Sinon, on va se connecter à la base de données, récupérer les commentaires du plus ancien au plus récent (SELECT * FROM comments WHERE article_id = ?)
+* 
+* On va ensuite afficher l'article puis ses commentaires
+*/
+$commentModel = new \Models\Comment();
+
+/**
+* 1. Récupération du param "id" et vérification de celui-ci
+*/
+// On part du principe qu'on ne possède pas de param "id"
+$article_id = null;
+
+// Mais si il y'en a un et que c'est un nombre entier, alors c'est cool
+if (!empty($_GET['id']) && ctype_digit($_GET['id'])) {
+    $article_id = $_GET['id'];
+}
+
+// On peut désormais décider : erreur ou pas ?!
+if (!$article_id) {
+    die("Vous devez préciser un paramètre `id` dans l'URL !");
+}
+/**
+* 3. Récupération de l'article en question
+* On va ici utiliser une requête préparée car elle inclue une variable qui provient de l'utilisateur : Ne faites
+* jamais confiance à un utilisateur ! :D
+*/
+$article = $this->model->find($article_id);
+
+/**
+* 4. Récupération des commentaires de l'article en question
+* Pareil, toujours une requête préparée pour sécuriser la donnée filée par l'utilisateur 
+*/
+$commentaires = $commentModel->findAllWithArticle($article_id);
+
+/**
+ * 5. On affiche 
+ */
+$pageTitle = $article['title'];
+
+render('articles/show',compact ('pageTitle', 'article','commentaires', 'article_id'));
+
+    }
+
+    public function delete(){
+        //supprimer un article
+
+/**
+ * SUPPRIME L'ARTICLE DONT L'ID EST PASSE EN GET
+ * 
+ * Il va donc falloir bien s'assurer qu'un paramètre "id" est bien passé en GET, puis que cet article existe bel et bien
+ * Ensuite, on va pouvoir effectivement supprimer l'article et rediriger vers la page d'accueil
+ */
+
+/**
+ * 1. On vérifie que le GET possède bien un paramètre "id" (delete.php?id=202) et que c'est bien un nombre
+ */
+if (empty($_GET['id']) || !ctype_digit($_GET['id'])) {
+    die("Ho ?! Tu n'as pas précisé l'id de l'article !");
+}
+
+$id = $_GET['id'];
+
+/**
+ * 3. Vérification que l'article existe bel et bien
+ */
+$article = $this->model->find($id);
+if (!$article) {
+    die("L'article $id n'existe pas, vous ne pouvez donc pas le supprimer !");
+}
+
+/**
+ * 4. Réelle suppression de l'article
+ */
+$this->model->delete($id);
+
+/**
+ * 5. Redirection vers la page d'accueil
+ */
+redirect("index.php");
+    }
+}
+````
+
+**Comment.php**
+On procede la même manière avec le fichier Comment du controllers, les éléments du fichier save-comment delete-comment sont dans le fichier Controller/Comment les funciton insert et delete sont crées pour éviter la répétition, ne pas oublier d'effectuer les require dans chaque fichier du dossier models: 
+````php
+namespace Controllers;
+
+require_once('libraries/utils.php');
+require_once('libraries/models/Article.php');
+require_once('libraries/models/Comment.php');
+class Comment{
+
+    private $model;
+    public function __construct() {
+        $this->model = new \Models\Comment();
+    }
+    public function insert(){
+        // insert un commentaire
+
+$articleModel = new \Models\Article();
+
+    /**
+     * 1. On vérifie que les données ont bien été envoyées en POST
+     * D'abord, on récupère les informations à partir du POST
+     * Ensuite, on vérifie qu'elles ne sont pas nulles
+     */
+    // On commence par l'author
+$author = null;
+if (!empty($_POST['author'])) {
+    $author = $_POST['author'];
+}
+
+    // Ensuite le contenu
+$content = null;
+if (!empty($_POST['content'])) {
+    // On fait quand même gaffe à ce que le gars n'essaye pas des balises cheloues dans son commentaire
+    $content = htmlspecialchars($_POST['content']);
+}
+
+    // Enfin l'id de l'article
+$article_id = null;
+if (!empty($_POST['article_id']) && ctype_digit($_POST['article_id'])) {
+    $article_id = $_POST['article_id'];
+}
+
+    // Vérification finale des infos envoyées dans le formulaire (donc dans le POST)
+    // Si il n'y a pas d'auteur OU qu'il n'y a pas de contenu OU qu'il n'y a pas d'identifiant d'article
+if (!$author || !$article_id || !$content) {
+    die("Votre formulaire a été mal rempli !");
+}
+
+    /**
+     * 2. Vérification que l'id de l'article pointe bien vers un article qui existe
+     */
+
+$article = $articleModel->find($article_id);
+
+    // Si rien n'est revenu, on fait une erreur
+if (!$article) {
+    die("Ho ! L'article $article_id n'existe pas boloss !");
+}
+
+    // 3. Insertion du commentaire
+$this->model->insert($author,$content,$article_id);
+
+    // 4. Redirection vers l'article en question :
+redirect("article.php?id=" . $article_id);
+
+}
+````
+**save-comment.php**
+````php
+require_once ('libraries/controllers/Comment.php');
+$controller = new \Controllers\Comment();
+$controller->insert();
+````
+**Comment.php**
+````php
+public function delete(){
+        // supprime un commentaire
+/**
+ * 1. Récupération du paramètre "id" en GET
+ */
+if (empty($_GET['id']) || !ctype_digit($_GET['id'])) {
+    die("Ho ! Fallait préciser le paramètre id en GET !");
+}
+
+$id = $_GET['id'];
+
+/**
+ * 3. Vérification de l'existence du commentaire
+ */
+$commentaire = $this->model->find($id);
+if (!$commentaire) {
+    die("Aucun commentaire n'a l'identifiant $id !");
+}
+
+/**
+ * 4. Suppression réelle du commentaire
+ * On récupère l'identifiant de l'article avant de supprimer le commentaire
+ */
+$article_id = $commentaire['article_id'];
+$this->model->delete($id);
+
+/**
+ * 5. Redirection vers l'article en question
+ */
+redirect("article.php?id=" . $article_id);
+    }
+}
+````
+**delete-comment**
+````php
+require_once('libraries/Controllers/Comment.php');
+$controller = new \Controllers\Comment();
+$controller->delete();
+````   
+
+On va refactoriser la function __construct qui se répéte dans les fichiers controllers\Article et Comment :  
+````php
+    protected $model;
+    public function __construct() {
+        $this->model = new \Models\Comment();
+    }
+
+    protected $model;
+    public function __construct() {
+        $this->model = new \Models\Article();
+    }
+````
+En utilisant une class abstract n créant le fichier **Controllers.php** on va pouvoir refactoriser le code et eviter la répétition
+**Controller.php**
+````php
+namespace Controllers;
+
+abstract class Controller{
+    protected $model;
+    protected $modelName = "";
+    public function __construct() {
+        $this->model = new $this->modelName();
+    }
+    }
+````
+On oublie pas de mettre le require de notre fichier controller dans chaque fichier concerné par la refactorisation (Article et Comment)
+**Article.php**
+````php
+require_once ('libraries/controllers/Controller.php');
+class Article extends Controller{
+//  cela donne le nom qualifié d'une classe 
+  protected $modelName = \Models\Article::class;
+  }
+````
+
+## Autoloding : 
+**Autoload.php**
+Permet de ne pas require une classe  mais de la charger automatiquement si on utilise cette classe.
+Dans le dossier libraries on crée un nouveau fichier **autoload.php** la fonction **spl_autoload_register()** qui prend en parametre une function qui prend en parmetre une classe  **spl_autoload_register(function($className))**
+Ce qui va nou permttre de supprimer tous les require qui contiennent des classes :
+````php
+spl_autoload_register(function($className){
+    // ce que l'on reçoit dans la className = Controllers\Article
+    // dans classeName on veut remplacer les \\ par de /.
+    // require = libraries/Controllers/Article.php;
+    $className = str_replace("\\", "/", $className);
+    // $className = Controllers/Article.php;
+    require_once ("libraries/$className.php");
+});
+````
+
+On va donc pouvoir supprimer les require de chaque fichier php qui contient  une classe.
+On fera un require de notre fichier  autoload.php dans le fichier **index.php, comment.php, delete-article et delete-comment**
+**index.php**
+````php
+require_once ('libraries/autoload.php');
+ $controller = new \Controllers\Article ();
+ $controller->index();
+````
+
+## Les methodes statiques : 
+Les classes statiques sont des petites functions,on appel la **fonction** sur classe en elle même.
+En indiquant que la classe est **static**
+On crée une classe au fichier **database.php**, on ne met pas de namespace car le fichier n'est pas dans un dossier
+On y intégre le function pour la connexion à la bdd
+````php
+// en appelant directement la méthode sur la class = $pdo = Database::getPdo();
+//en ajoutant le mot clé static à notre fonction cela aura le même impact 
+public static function getPdo(): PDO {
+    $pdo = new PDO('mysql:host=localhost;dbname=blogpoo;charset=utf8', 'root', '', [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ]);
+        return $pdo;
+    }
+````
+On crée une classe au fichier Http va qui concerner uniquement les redirections les requêtes tout ce qui conerne la reqête et la réponse
+Un fichier et la classe Rendrer concerne le rendu
+
+La function redirect est intégrée à la classe Http 
+````php
+class Http{
+    /* fonction pour rediriger suite à la suppression  vers une page 
+    qui doit contenir une chaine de caractere et l'url*/
+    public static function redirect(string $url): void {
+    header("Location: $url");
+    exit();
+    }
+}
+````
+
+La function render est intégrée à la classe Renderer  
+````php
+    public static function render(string $path, array $variables = []){
+        extract($variables);
+        ob_start();
+        require('templates/'. $path . '.html.php');
+        $pageContent = ob_get_clean();
+    
+        require('templates/layout.html.php');
+}
+````
+**Model.php**
+Dans ce fichier il faut appeler notre objet et supprimer le require de la connexion à la BDD
+Ne pas oublier d'ajouter le \ devant Database pour indiquer que cette classe ne fait pas partie du namespace
+````php
+$this->pdo = \Database::getPdo();
+````
+
+Dans les fichier où sont utilisées les function statique il faut modifer l'appel via notre objet
+````php
+**controllers/Article.php**
+\Renderer::render
+\Http::redirect("index.php");
+````
+
+## La Classe application :

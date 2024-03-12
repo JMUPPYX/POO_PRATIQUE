@@ -1,5 +1,6 @@
 <?php
-require_once ('libraries/models/Model.php');
+
+namespace Models;
 class Article extends Model{
-  protected  $table = 'articles';
+  protected  $table = "articles";
 }
