@@ -16,5 +16,4 @@ public static function getPdo(): PDO {
         ]);
         return $pdo;
     }
-
 }

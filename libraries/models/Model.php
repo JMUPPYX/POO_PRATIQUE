@@ -6,6 +6,7 @@ abstract class Model {
     protected $table;
     public function __construct() {
     $this->pdo = \Database::getPdo();
+
   }
 
   /** index.php : function findAllArticles() qui va nous permettre 

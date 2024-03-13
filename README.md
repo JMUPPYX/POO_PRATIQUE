@@ -904,7 +904,7 @@ On va refactoriser la function __construct qui se répéte dans les fichiers con
         $this->model = new \Models\Article();
     }
 ````
-En utilisant une class abstract n créant le fichier **Controllers.php** on va pouvoir refactoriser le code et eviter la répétition
+En utilisant une class abstract en créant le fichier **Controllers.php** on va pouvoir refactoriser le code et eviter la répétition
 **Controller.php**
 ````php
 namespace Controllers;
@@ -953,8 +953,7 @@ require_once ('libraries/autoload.php');
 ````
 
 ## Les methodes statiques : 
-Les classes statiques sont des petites functions,on appel la **fonction** sur classe en elle même.
-En indiquant que la classe est **static**
+Les classes statiques sont des petites functions,on appel la **fonction** sur la classe en elle même.
 On crée une classe au fichier **database.php**, on ne met pas de namespace car le fichier n'est pas dans un dossier
 On y intégre le function pour la connexion à la bdd
 ````php
@@ -968,10 +967,10 @@ public static function getPdo(): PDO {
         return $pdo;
     }
 ````
-On crée une classe au fichier Http va qui concerner uniquement les redirections les requêtes tout ce qui conerne la reqête et la réponse
-Un fichier et la classe Rendrer concerne le rendu
+On crée une classe au fichier Http va qui concerner uniquement les redirections les requêtes tout ce qui concerne la reqête et la réponse
+Le fichier et la classe Renderer concerne le rendu
 
-La function redirect est intégrée à la classe Http 
+La **function redirect** est intégrée à la classe Http 
 ````php
 class Http{
     /* fonction pour rediriger suite à la suppression  vers une page 
@@ -1001,7 +1000,7 @@ Ne pas oublier d'ajouter le \ devant Database pour indiquer que cette classe ne 
 $this->pdo = \Database::getPdo();
 ````
 
-Dans les fichier où sont utilisées les function statique il faut modifer l'appel via notre objet
+Dans les fichiers où sont utilisés les function statiques il faut modifier l'appel via notre objet
 ````php
 **controllers/Article.php**
 \Renderer::render
@@ -1009,3 +1008,58 @@ Dans les fichier où sont utilisées les function statique il faut modifer l'app
 ````
 
 ## La Classe application :
+La classe Application sera une classe qui va représenter nos fichiers à la racine de notre blog (index,article,save-comment...)
+Cela évite une répétion en cas d'ajout d'action.
+La class Application est crée.
+La **function static public process()** definira qur quel  **controller** on veut travailler et la tâche (function) que l' on veut appeler sur ce **controller**
+Dans le fichier **index.php** on appelera uniquement **\Application:: process()**
+Pour avoir uniquement le fichier **index.php** et obtenir ceci ![capture d'écran](img_readme/process.PNG), qu'il nous montre la fonction show de l'article 133 , une condition va être crée.
+
+[Ucfirst](https://www.php.net/manual/fr/function.ucfirst.php)
+
+````php
+ class Application{
+    public static function process(){
+        // definit la class 
+        $controllerName = "Article";
+        // definit la tâche(fonction)
+        $task = "index";
+        // si n'est pas vide $_Get controller alors je 
+        // veux que $controllerName soit = ucfirst de $_Get controller
+        if (!empty($_GET['controller'])){
+            //GET => article
+            // Article
+            $controllerName = ucfirst($_GET['controller']);
+        }
+        // si n'est pas vide $_Get task alors task est égale ce qu'il y a dans $_Get dans la task
+        if (!empty($_GET['task'])){
+            $task = $_GET['task'];
+        }
+        // définit le chemin du fichier à appeler
+        $controllerName = "\Controllers\\" . $controllerName;
+        // instancie notre classe Article = $controller = new \Controllers\Article();
+        $controller = new $controllerName();
+        // appel la tâche (funtion) à exécuter depuis notre fichier Controllers\Article()
+        $controller->$task();
+
+    }
+ }
+ ````
+On supprime les fichiers article.php delete-comment.php save comment.php qui sont dans le fichier racine.
+Dans le dossier templates (view) les liens sont changés et toutes les actions se passent dans Application.php
+
+index.html.php
+![capture d'écran](img_readme/app1.PNG)
+show.html.php
+![capture d'écran](img_readme/app2.PNG)
+Les redirections des fichiers Article et Comment du controllers sont également modifiés : 
+
+**Comment.php**
+![capture d'écran](img_readme/app4.PNG)
+![capture d'écran](img_readme/app3.PNG)
+**Article.php**
+![capture d'écran](img_readme/app5.PNG)
+
+## Le SINGLETON :
+
+
