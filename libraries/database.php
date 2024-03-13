@@ -1,6 +1,8 @@
 <?php
 
 class Database{
+
+private static $instance =null;
         /**
  * 1. Connexion à la base de données avec PDO
  * Attention, on précise ici deux options :
@@ -10,10 +12,14 @@ class Database{
  * @return PDO quelque chose de type
  */
 public static function getPdo(): PDO {
-    $pdo = new PDO('mysql:host=localhost;dbname=blogpoo;charset=utf8', 'root', '', [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-        ]);
-        return $pdo;
+    // si la propriété instance est strictement égal à null (pas d'instance de PDO)
+    if (self::$instance === null){
+        self::$instance = new PDO('mysql:host=localhost;dbname=blogpoo;charset=utf8', 'root', '', [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+            ]);
+        }
+        return self::$instance;
     }
-}
+       
+    }

@@ -6,7 +6,8 @@ La POO permet d'avoir un meilleur organisation grâce aux fonctions.
 
 La factorisation permet de centraliser le code.
 
-**index.php**
+**index.php**:
+
 Connexion à la base de données avec la classe PDO.
 Le tableau d'option indique : 
 - Quand il y a une erreur renvoi moi l'erreur
@@ -18,7 +19,7 @@ Le tableau d'option indique :
 - **ob_start();** = est utilisé pour temporiser la sortie et permettre de contrôler ce qui est affiché avant qu’il ne soit envoyé au client. 
 
 - **require** est dans le tampon , donc on ne peut pas afficher directement. On utilise **echo ob_get_clean()** pour afficher ce qui est dans le    
-- **$pageContent = ob_get_clean();**  = lit le contenu courant du tampon de sortie et l’efface en même temps.On utilise la boucle  (**require('templates/articles/index.html.php');**) **Foreach** qui va nous permettre d'afficher notre article suite à notre requête : 
+- **$pageContent = ob_get_clean();**  = lit le contenu courant du tampon de sortie et l’efface en même temps.On utilise la boucle  **require('templates/articles/index.html.php');** **Foreach** qui va nous permettre d'afficher notre article suite à notre requête : 
 
 ````html
 <h1>Nos articles</h1>
@@ -51,8 +52,9 @@ Le tableau d'option indique :
 </html>
 ````
 
-Afin d'éviter les répétitions et avoir une meilleur évolution et gestion du code nous allons centraliser les élèments qui se répetent dans un dossier nommé libraries, qui contient le fichier database.php = la connexion à la base de données 
-index.php
+- Afin d'éviter les répétitions et avoir une meilleur évolution et gestion du code nous allons centraliser les élèments qui se répetent dans un dossier nommé libraries, qui contient le fichier database.php = la connexion à la base de données.
+
+**index.php**
 ````php
 $pdo = new PDO('mysql:host=localhost;dbname=blogpoo;charset=utf8', 'root', '', [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -60,7 +62,7 @@ $pdo = new PDO('mysql:host=localhost;dbname=blogpoo;charset=utf8', 'root', '', [
     ]);
 
 ````
-database.php
+**database.php**
 ````php
 function getPdo(): PDO 
 {
@@ -71,15 +73,20 @@ $pdo = new PDO('mysql:host=localhost;dbname=blogpoo;charset=utf8', 'root', '', [
     return $pdo;
 }
 ````
-index.php : le require nous permet d'inclure notre fonction pour la connexion et **$pdo = getPdo()**  nous retourne le resultat de la fonction 
+- Le require nous permet d'inclure notre fonction pour la connexion et **$pdo = getPdo()**  nous retourne le resultat de la fonction 
+
+**index.php** : 
 ````php
 require_once ('libraries\database.php');
 $pdo = getPdo();
 ````
-La même démarche est effectuée dans les fichers qui  vont utiliser cette fonction pour accéder à la base de données.(article,save comment,delete comment,delete article)
+- La même démarche est effectuée dans les fichers qui  vont utiliser cette fonction pour accéder à la base de données.(article,save comment,delete comment,delete article)
+
+
+- Pour l'affichage html nous allons également refactoriser le code en fonction :
 
 **index.php**
-Pour l'affichage html nous allons également refactoriser le code en fonction :
+
 ````php
 $pageTitle = "Accueil";
 ob_start();
@@ -96,9 +103,27 @@ $pageContent = ob_get_clean();
 
 require('templates/layout.html.php');
 ````
+````html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Mon superbe blog - <?= $pageTitle ?></title>
+</head>
+
+<body>
+    <?= $pageContent ?>
+</body>
+
+</html>
+````
+
+- Le $path = 'articles/show.php' est le chemin du fichier  qui va être utilisé.
+Les variables $article, $commentaires, $article_id et $pageTitle pour que les variables soit reconnue par la fonction et non defini un array $variables = [] est crée dans la fonction 
 **utils.php**
-Le $path = 'articles/show.php' est le chemin du fichier  qui va être utilisé.
-Les variables $article, $commentaires, $article_id et $pageTitle pour que les variables soit reconnu par la fonction et non defini un array $variables = [] est crée dans la fonction 
 ````php
 // render ('articles/show')
 function render(string $path, array $variables = []){
@@ -109,8 +134,10 @@ function render(string $path, array $variables = []){
     require('templates/layout.html.php');
 }
 ````
+
+- Lors de l'appel de fonction dans le fichier article.php nous indiquons  le $path et les variables qui seront nécéssaires pour l'affichage du fichier show.html.php sous forme de tableau associatif.
+
 **article.php**
-Lors de l'appel de fonction dans le fichier article.php nous indiquons  le $path et les variables qui seront nécéssaires pour l'affichage du fichier show.html.php sous forme de tableau associatif.
 ````php
 render('articles/show',
     ['pageTitle'=>$pageTitle, 
@@ -123,10 +150,40 @@ Pour éviter la répétition du tableau associatif à partir du nom des variable
 render('articles/show',compact('pageTitle', 'article','commentaires', 'article_id'));
 //équivalent : compact('pageTitle = > $pageTitle, etc)
 ````
+**show.html.php**
+````html
+<h1><?= $article['title'] ?></h1>
+<small>Ecrit le <?= $article['created_at'] ?></small>
+<p><?= $article['introduction'] ?></p>
+<hr>
+<?= $article['content'] ?>
+
+<?php if (count($commentaires) === 0) : ?>
+    <h2>Il n'y a pas encore de commentaires pour cet article ... SOYEZ LE PREMIER ! :D</h2>
+<?php else : ?>
+    <h2>Il y a déjà <?= count($commentaires) ?> réactions : </h2>
+    <?php foreach ($commentaires as $commentaire) : ?>
+        <h3>Commentaire de <?= $commentaire['author'] ?></h3>
+        <small>Le <?= $commentaire['created_at'] ?></small>
+        <blockquote>
+            <em><?= $commentaire['content'] ?></em>
+        </blockquote>
+        <a href="index.php?controller=comment&task=delete&id=<?= $commentaire['id'] ?>" onclick="return window.confirm(`Êtes vous sûr de vouloir supprimer ce commentaire ?!`)">Supprimer</a>
+    <?php endforeach ?>
+<?php endif ?>
+
+<form action="index.php?controller=comment&task=insert" method="POST">
+    <h3>Vous voulez réagir ? N'hésitez pas les bros !</h3>
+    <input type="text" name="author" placeholder="Votre pseudo !">
+    <textarea name="content" id="" cols="30" rows="10" placeholder="Votre commentaire ..."></textarea>
+    <input type="hidden" name="article_id" value="<?= $article_id ?>">
+    <button>Commenter !</button>
+</form>
+````
+
+- Pour passer le tableau association en variable il faut utiliser la fonction  **extract()**,elle créera automatiquement des variables avec ces noms et les valeurs correspondantes, il sortira les clés et valeurs du tableau associatif sous forme de variable.
 
 **utils.php**
-Pour passer le tableau association en variable il faut utiliser la fonction  **extract()**,elle créera automatiquement des variables avec ces noms et les valeurs correspondantes, il sortira les clés et valeurs du tableau associatif sous forme de variable
-
 ````php
 // render ('articles/show')
 function render(string $path, array $variables = []){
@@ -138,8 +195,9 @@ function render(string $path, array $variables = []){
     require('templates/layout.html.php');
 }
 ````
-index.php : ne pas oublier le require du fichier utils .php qui contient la **fonction render()**:
+ - Ne pas oublier le require du fichier utils .php qui contient la **fonction render()**:
 
+**index.php**
 ````php
 require_once ('libraries/utils.php');
 
@@ -147,7 +205,8 @@ $pageTitle = "Accueil";
 render('articles/index', compact('pageTitle', 'articles'));
 ````
 
-Un fonction de redirection va être créer les fichiers concernés sont delete-article,delete-comment, save-comment :
+- Un fonction de redirection va être créer les fichiers concernés sont delete-article,delete-comment, save-comment :
+
 **:void indique que la fonction ne retourne rien**
 ````php
 function redirect(string $url): void {
@@ -174,7 +233,7 @@ exit();
 header('Location: article.php?id=' . $article_id);
 exit();
 ````
-Ne pas oublier le require sur chaque fichier concerné
+**Ne pas oublier le require sur chaques fichiers concernés**
 ````php
 require_once('libraries/utils.php');
 ````
@@ -195,8 +254,8 @@ $resultats = $pdo->query('SELECT * FROM articles ORDER BY created_at DESC');
 // On fouille le résultat pour en extraire les données réelles
 $articles = $resultats->fetchAll();
 ````
-Nous créeons une fonction pour centraliser pour obtenir le résulat de notre requête :
- **$pdo = getPdo();** PDO sera ce que va retourner la **function Pdo**, en effet **$pdo** de notre function findAllArticles n'était pas défini
+- Nous créeons une fonction pour centraliser et pour obtenir le résulat de notre requête :
+ **$pdo = getPdo();** PDO sera ce que va retourner la **function Pdo**, en effet **$pdo** de notre fonction findAllArticles n'était pas défini
  **: array** indique que la fonction va nous retourner un tableau
 **database.php**
 ````php
@@ -212,7 +271,7 @@ function findAllArticles(): array {
     return $articles;
 }
 ````
-La fonction est appelée  dans index.php et utilisée partout où il faudrait afficher toutes les publications.
+- La fonction est appelée  dans **index.php** et utilisée partout où il faudrait afficher toutes les publications.
 De plus  **$pdo = getPdo();** peut être effacé car la fonction pour la connexion à la BDD est intégré à notre fonction
 ````php
 $articles = findAllArticles();
@@ -241,7 +300,8 @@ render('articles/index' , compact('pageTitle', 'articles'));
 ````
 
 **article.php**
-nous allons effectuer la même démarche  mais avec une variable $id, ce qui permet d'afficher un seul article plutôt que contient une page unique pour afficher un seul.
+nous allons effectuer la même démarche  mais avec une variable $id, ce qui permet d'afficher un seul article.
+
 ````php
 $query = $pdo->prepare("SELECT * FROM articles WHERE id = :article_id");
 // On exécute la requête en précisant le paramètre :article_id 
@@ -363,16 +423,18 @@ function deleteComment (int $id) : void {
     }
 ````
 ## **Les classes**(models):
-L'organisation du code utilisera le **MVC**
+- L'organisation du code utilisera le **MVC**
 Models = pour l'accès aux données 
-**Controller** = il va gérer l'interaction  entre les vues et les modèles et l'utilisateur
-Classe statiques = pour les utilities
+**Controller** = il va gérer l'interaction  entre les vues et les modèles et l'utilisateur.
+
+- Classe statiques = pour les utilities
 Dans la programmation orienté objet on parle de model de données lorsque on veut accéder à des donner (bdd,fichier, xml...).
 Nous créeons le fichier "Article.php" avec un A majuscule car c'est une classe.
-Il va s'y trouver les données qui servent à manipuler les données des articles
+Il va s'y trouver les données qui servent à manipuler les données des **articles.php**.
 
-La **public function findAllArticles() : array{}** = elle est mise en public pour pouvoir être appelé
-L'ensemnle des functions qui correspondant aux articles sont dans un seul est même fichier, cela facilite l'organisation et rend le code beaucoup plus lisible :
+- La **public function findAllArticles() : array{}** = elle est mise en public pour pouvoir être appelé
+L'ensemnle des functions  correspondant aux articles qui sont dans un seul est même fichier, cela facilite l'organisation et rend le code beaucoup plus lisible :
+
 **Article.php**
 ````php
 require_once ('libraries/database.php');
@@ -468,10 +530,10 @@ public function delete(int $id) : void {
   }
 }
 ````
-Les nom des méthodes sont modifiés donc il fauit bien penser à les actualiser dans les fichiers concernés pour chaque function appelée.
+- Les noms des méthodes sont modifiés donc il faut bien penser à les actualiser dans les fichiers concernés pour chaque function appelée.
 
-Pour éviter la répétition de **$pdo= getPdo()** dans différentes fonction de notre objet Article, nous allons refactoriser cette méthode qui sera appliquée dès la naissance de notre objet,
-Le constructeur nous permet cela (comportement appelé dès que l'on crée une  instance de cette class)
+- Pour éviter la répétition de **$pdo= getPdo()** dans différentes fonction de notre objet **Article**, nous allons refactoriser cette méthode qui sera appliquée dès la naissance de notre objet,
+Le constructeur nous permet cela (comportement appelé dès que l'on crée une  instance de cette classe)
 ````php
 private $pdo;
 public function __construct() {
@@ -486,8 +548,9 @@ public function findAll() : array {
 }
 ````
 
-Le code ci dessus va être mis en commun pour nos deux objets, nous créeons un fichier Models.php qui contiendra donc ce code que l'on va faire hérité à nos deux classes 
-Les model qui ont des fonctionnalitées qui nous permettent de travailler sur les tables de la BDD :
+- Le code ci dessus va être mis en commun pour nos deux objets, nous créeons un fichier Models.php qui contiendra donc ce code que l'on va faire hérité à nos deux classes,
+sur les  models qui ont des fonctionnalitées qui nous permettent de travailler sur les tables de la BDD :
+
 **Models.php**
 ````php
 require_once ('libraries/database.php');
@@ -498,12 +561,14 @@ class Model {
   }
 }
 ````
-La propriété utilisele mot clé protected afin de permettre au classe fille de pouvoir utilisé cette function extends nous permet cela : 
+- La propriété utilise le mot clé **protected** afin de permettre au classe fille de pouvoir l'utiliser, le mot clé **extends** nous permet cela : 
+
 **Comment.php**
 ````php
 class Comment extends Model
 ````
-Ne pas oublier de supprimer les require de la database  des fichers Article et Comment en effet le fichier Model sera require dans chaque classe et Model devra bien évidemmment avoir le require connexion à la database.
+- Ne pas oublier de supprimer les require de la database  des fichers **article.php et comment.php** du model.
+En effet le fichier Model sera require dans chaque classe et Model devra bien évidemmment avoir le require connexion à la database.
 ````php
  require_once ('libraries/database.php');
 class Model {
@@ -515,7 +580,8 @@ class Model {
 ````
 
 ## Classes et Héritage :
-La **fonction find** va être mise en commun sur le principe de la méthode de l'héritage grace à notre class parent Model : 
+- La **fonction find** va être mise en commun sur le principe de la méthode de l'héritage grace à notre class parent Model : 
+
 **Article.php**
 ````php
 public function find(int $id){
@@ -548,15 +614,16 @@ protected  $table = 'articles';
 protected  $table = 'comments';
 ````
 
-La **function delete** sera aussi refactoriser afin qu'elle soit utiliser par les deuc lasses sur le principe de l'héritage
+- La **function delete** sera aussi refactorisée afin qu'elle soit utilisée par les deux classes **article et comment** du dossier **models** sur le principe de l'héritage
 ````php
 public function delete(int $id) : void {
     $query = $this->pdo->prepare("DELETE FROM {$this->table} WHERE id = :id");
     $query->execute(['id' => $id]);
   }
 ````
-La **function findAll** est également refactoriser
-**Articles**
+- La **function findAll** est également refactoriser dans le fichier **Model.php**
+
+**Articles.php**
 ````php
   public function findAll() : array {
     $resultats = $this->pdo->query('SELECT * FROM articles ORDER BY created_at DESC');
@@ -565,8 +632,8 @@ La **function findAll** est également refactoriser
     return $articles;
 }
 ````
-La **function findAll** on va indique qu'elle peut recevoir **$order = ""**
-et si la variable $order n'est pas vide, on ajoute **"ORDER BY"** et  et la phrase ajoutée à **. $order;**
+- La **function findAll**  va indiquer qu'elle peut recevoir **$order = ""**
+et si la variable **$order** n'est pas vide, on ajoute **"ORDER BY"** et la phrase ajoutée à **. $order;**
 ````php
   public function findAll(?string $order = "") : array {
     $sql = "SELECT * FROM {$this->table}";
@@ -579,16 +646,29 @@ et si la variable $order n'est pas vide, on ajoute **"ORDER BY"** et  et la phra
     return $articles;
 }
 ````
+````html
+<h1>Nos articles</h1>
+
+<?php foreach ($articles as $article) : ?>
+    <h2><?= $article['title'] ?></h2>
+    <small>Ecrit le <?= $article['created_at'] ?></small>
+    <p><?= $article['introduction'] ?></p>
+    <a href="index.php?controller=article&task=show&id=<?= $article['id'] ?>">Lire la suite</a>
+    <a href="index.php?controller=article&task=delete&id=<?= $article['id'] ?>" onclick="return window.confirm(`Êtes vous sur de vouloir supprimer cet article ?!`)">Supprimer</a>
+<?php endforeach ?>
+````
+- On indique **$order** dans notre fichier **index.php** la où est appelée notre function.
+
 **index.php**
-On indique **$order** dans notre fichier **index.php** la où est appelée notre function
 ````php
  /** 2. Récupération des articles
  */
 $articles = $model->findAll("created_at DESC");
 ````
-la classe Model est dynamique car elle agit sur les tables.
+- La classe Model est dynamique car elle agit sur les tables.
 
-La classe User est crée elle va nous permettre de récupérer l'intégralité de la table users, toujours en utilisant le méthode de l'héritage :
+- La classe User est crée elle va nous permettre de récupérer l'intégralité de la table users, toujours en utilisant le méthode de l'héritage :
+
 **User.php**
 ````php
 require_once('libraries/models/Model.php');
@@ -597,7 +677,9 @@ class User extends Model{
     protected $table = "users";
 }
 ````
-**index.php** on appel la fonction **findAll**
+ - On appel la fonction **findAll**
+
+ **index.php**
 ````php
 require_once ('libraries/models/User.php');
 $userModel = new User();
@@ -605,43 +687,47 @@ $users = $userModel->findAll();
 var_dump($users);
 die();
 ````
-Tous les utilisateur s'affiche sous forme d'un tableau associatif :
+Tous les utilisateur s'affichent sous forme d'un tableau associatif :
 ![capture d'ecran](img_readme/users.PNG)
 
-La class Model est une idée, pour empêcher qu' un developpeur utilise la class Model on empêche la création d'objet (l'instancie)  dans la class Model on utilise  l'abstraction :
+- La class Model est une idée, pour empêcher qu' un developpeur utilise la classe **Model** du dossier **models** on empêche la création d'objet (l'instancie)  dans la class Model on utilise  l'abstraction :
 ````php
 abstract class Model{}
 ````
 ## Les Namespaces et Classes : 
 On va créer des classes qui nous permettent d'avoir une intéraction avec l'utilisateur.
 Les classes d'action = les interactions entre l'utilisateur et le site.
-La création du dossier **controllers** nous permet stocker les codes qui vont gérer les différentes actions
+La création du dossier **controllers** nous permet stocker les codes qui vont gérer les différentes actions.
 
-On ne pas appeler deux classes du même nom, on utilise les namespace pour ça, cela indique que  sont des fichiers dans des dossiers différents.
-On va indiquer dans le dossier models  pour les fichiers Article, Comment,Model et User que le namespace est Models : 
+- On ne peut appeler deux classes du même nom, on utilise les namespaces pour ça, cela indique que  sont des fichiers dans des dossiers différents.
+On va indiquer dans le dossier models  pour les fichiers Article, Comment,Model et User que le namespace est Models (nom du dossier/chemin) : 
 ````php
 namespace Models;
 
-La même chose est faite pour le fichier Article du dossier controllers : 
+- La même chose est faite pour le fichier Article du dossier controllers : 
 
 ````php
 namespace Controllers;
 ````
 
-On indique quelle classe est instanciée en fonction du dossier dans lequel elle se trouve, effectivement nous avons deux classes du même nom ce sont ces deux namespace (Controllers et Models) qui différencient les classes : 
+- On indique quelle classe est instanciée en fonction du dossier dans lequel elle se trouve, effectivement nous avons deux classes du même nom ce sont ces deux namespace (Controllers et Models) qui différencient les classes : 
+
+**Article.php du dossier models**
 ````php
   $model = new \Models\Article();
 ````
-  **index.php**
-  Dans le fichier index.php la class Article est instancié en indiquant à quelle dossier on fait référence,
+  
+  - Dans le fichier index.php la class Article est instancié en indiquant à quelle dossier on fait référence.
   La même chose est effectuée sur les dossiers concernés: 
+  **index.php**
 ````php
 require_once ('libraries/controllers/Article.php');
  $controller = new \Controllers\Article ();
  $controller->index();
 ````
 
-On va utiliser la **function __construct** pour éviter la répétition concernant l'instance de Article.
+- On va utiliser la **function __construct** pour éviter la répétition concernant l'instance de Article.
+
 **Article.php (controllers)**
  ````php
     private $model;
@@ -649,7 +735,7 @@ On va utiliser la **function __construct** pour éviter la répétition concerna
         $this->model = new \Models\Article();
     }
  ````
- Le fichier **Article.php** est crée, ce fichier correspond aux actions de la classe article, voici le code en entier : 
+ - Le fichier **Article.php** est crée, ce fichier correspond aux actions de la classe article, voici le code en entier : 
 ````php
 
 namespace Controllers;
@@ -776,8 +862,9 @@ redirect("index.php");
 }
 ````
 
+- On procede la même manière avec le fichier Comment du controllers, les éléments du fichier **save-comment delete-comment sont dans le fichier Controller/Comment** les **fonctions insert et delete** sont crées pour éviter la répétition, **ne pas oublier d'effectuer les require dans chaque fichier du dossier models**: 
+
 **Comment.php**
-On procede la même manière avec le fichier Comment du controllers, les éléments du fichier save-comment delete-comment sont dans le fichier Controller/Comment les funciton insert et delete sont crées pour éviter la répétition, ne pas oublier d'effectuer les require dans chaque fichier du dossier models: 
 ````php
 namespace Controllers;
 
@@ -892,7 +979,7 @@ $controller = new \Controllers\Comment();
 $controller->delete();
 ````   
 
-On va refactoriser la function __construct qui se répéte dans les fichiers controllers\Article et Comment :  
+- On va refactoriser la function __construct qui se répéte dans les fichiers controllers\Article et Comment :  
 ````php
     protected $model;
     public function __construct() {
@@ -904,7 +991,7 @@ On va refactoriser la function __construct qui se répéte dans les fichiers con
         $this->model = new \Models\Article();
     }
 ````
-En utilisant une class abstract en créant le fichier **Controllers.php** on va pouvoir refactoriser le code et eviter la répétition
+- En utilisant une class abstract en créant le fichier **Controllers.php** on va pouvoir refactoriser le code et eviter la répétition
 **Controller.php**
 ````php
 namespace Controllers;
@@ -927,10 +1014,11 @@ class Article extends Controller{
   }
 ````
 
-## Autoloding : 
+## Autoloading : 
 **Autoload.php**
-Permet de ne pas require une classe  mais de la charger automatiquement si on utilise cette classe.
-Dans le dossier libraries on crée un nouveau fichier **autoload.php** la fonction **spl_autoload_register()** qui prend en parametre une function qui prend en parmetre une classe  **spl_autoload_register(function($className))**
+- Permet de ne pas require une classe  mais de la charger automatiquement si on utilise cette classe.
+Dans le dossier libraries on crée un nouveau fichier **autoload.php** 
+La fonction **spl_autoload_register()** qui prend en parametre une fonction qui prend en parmetre une classe  **spl_autoload_register(function($className))**
 Ce qui va nou permttre de supprimer tous les require qui contiennent des classes :
 ````php
 spl_autoload_register(function($className){
@@ -943,7 +1031,7 @@ spl_autoload_register(function($className){
 });
 ````
 
-On va donc pouvoir supprimer les require de chaque fichier php qui contient  une classe.
+- On va donc pouvoir supprimer les require de chaque fichier php qui contient  une classe.
 On fera un require de notre fichier  autoload.php dans le fichier **index.php, comment.php, delete-article et delete-comment**
 **index.php**
 ````php
@@ -953,8 +1041,8 @@ require_once ('libraries/autoload.php');
 ````
 
 ## Les methodes statiques : 
-Les classes statiques sont des petites functions,on appel la **fonction** sur la classe en elle même.
-On crée une classe au fichier **database.php**, on ne met pas de namespace car le fichier n'est pas dans un dossier
+Les classes statiques sont functions, on appel la **fonction** sur la classe en elle même.
+On crée une classe au fichier **database.php**, on ne met pas de namespace car le fichier n'est pas dans un dossier racine.
 On y intégre le function pour la connexion à la bdd
 ````php
 // en appelant directement la méthode sur la class = $pdo = Database::getPdo();
@@ -967,10 +1055,29 @@ public static function getPdo(): PDO {
         return $pdo;
     }
 ````
-On crée une classe au fichier Http va qui concerner uniquement les redirections les requêtes tout ce qui concerne la reqête et la réponse
-Le fichier et la classe Renderer concerne le rendu
+````php
+class Database{
+        /**
+ * 1. Connexion à la base de données avec PDO
+ * Attention, on précise ici deux options :
+ * - Le mode d'erreur : le mode exception permet à PDO de nous prévenir violament quand on fait une connerie ;-)
+ * - Le mode d'exploitation : FETCH_ASSOC veut dire qu'on exploitera les données sous la forme de tableaux associatifs
+ * Return une connexion à la  BDD 
+ * @return PDO quelque chose de type
+ */
+public static function getPdo(): PDO {
+    $pdo = new PDO('mysql:host=localhost;dbname=blogpoo;charset=utf8', 'root', '', [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ]);
+        return $pdo;
+    }
+}
+````
+- On crée une classe au fichier **Http** qui va concerner uniquement les redirections et les requêtes, tout ce qui concerne la reqête et la réponse.
+Le fichier et la classe **Renderer** concerne le rendu
 
-La **function redirect** est intégrée à la classe Http 
+- La **function redirect** est intégrée à la classe Http 
 ````php
 class Http{
     /* fonction pour rediriger suite à la suppression  vers une page 
@@ -982,7 +1089,7 @@ class Http{
 }
 ````
 
-La function render est intégrée à la classe Renderer  
+- La function **render** est intégrée à la classe Renderer  
 ````php
     public static function render(string $path, array $variables = []){
         extract($variables);
@@ -993,14 +1100,28 @@ La function render est intégrée à la classe Renderer
         require('templates/layout.html.php');
 }
 ````
-**Model.php**
-Dans ce fichier il faut appeler notre objet et supprimer le require de la connexion à la BDD
-Ne pas oublier d'ajouter le \ devant Database pour indiquer que cette classe ne fait pas partie du namespace
+````php
+
+class Renderer{
+    public static function render(string $path, array $variables = []): void{
+        extract($variables);
+        ob_start();
+        require('templates/'. $path . '.html.php');
+        $pageContent = ob_get_clean();
+        require('templates/layout.html.php');
+    }
+}
+````
+
+- Dans ce fichier il faut appeler notre objet et supprimer le require de la connexion à la BDD.
+Ne pas oublier d'ajouter le \ devant Database pour indiquer que cette classe ne fait pas partie du namespace.
+
+**models/Model.php**
 ````php
 $this->pdo = \Database::getPdo();
 ````
 
-Dans les fichiers où sont utilisés les function statiques il faut modifier l'appel via notre objet
+- Dans les fichiers où sont utilisés les function statiques il faut modifier l'appel via notre objet
 ````php
 **controllers/Article.php**
 \Renderer::render
@@ -1011,9 +1132,10 @@ Dans les fichiers où sont utilisés les function statiques il faut modifier l'a
 La classe Application sera une classe qui va représenter nos fichiers à la racine de notre blog (index,article,save-comment...)
 Cela évite une répétion en cas d'ajout d'action.
 La class Application est crée.
-La **function static public process()** definira qur quel  **controller** on veut travailler et la tâche (function) que l' on veut appeler sur ce **controller**
-Dans le fichier **index.php** on appelera uniquement **\Application:: process()**
-Pour avoir uniquement le fichier **index.php** et obtenir ceci ![capture d'écran](img_readme/process.PNG), qu'il nous montre la fonction show de l'article 133 , une condition va être crée.
+La **function static public process()** definira quel  **controller** on veut travailler et la tâche (function) que l' on veut appeler sur ce **controller**.
+Dans le fichier **index.php** on appelera uniquement **\Application:: process()**.
+
+- Pour avoir uniquement le fichier **index.php** et obtenir ceci ![capture d'écran](img_readme/process.PNG), qu'il nous montre la fonction show de l'article 133 , une condition va être crée.
 
 [Ucfirst](https://www.php.net/manual/fr/function.ucfirst.php)
 
@@ -1045,21 +1167,58 @@ Pour avoir uniquement le fichier **index.php** et obtenir ceci ![capture d'écra
     }
  }
  ````
-On supprime les fichiers article.php delete-comment.php save comment.php qui sont dans le fichier racine.
-Dans le dossier templates (view) les liens sont changés et toutes les actions se passent dans Application.php
+- On supprime les fichiers article.php delete-comment.php save comment.php (ça va bien se passer ;-) qui sont dans le fichier racine.
+
+- Dans le dossier templates (view) les liens sont changés et toutes les actions se passent dans **Application.php**
 
 index.html.php
-![capture d'écran](img_readme/app1.PNG)
+![capture d'écran](img_readme\app1.png)
 show.html.php
-![capture d'écran](img_readme/app2.PNG)
-Les redirections des fichiers Article et Comment du controllers sont également modifiés : 
+![capture d'écran](img_readme/app2.png)
+Les redirections des fichiers **Article et Comment du controllers** sont également modifiés : 
 
 **Comment.php**
-![capture d'écran](img_readme/app4.PNG)
-![capture d'écran](img_readme/app3.PNG)
+![capture d'écran](img_readme/app4.png)
+![capture d'écran](img_readme/app3.png)
 **Article.php**
-![capture d'écran](img_readme/app5.PNG)
+![capture d'écran](img_readme/app5.png)
 
 ## Le SINGLETON :
+Va éviter les **max connexion limite** grâce au pattern du SINGLETON.
+Le Singleton nous permet d'avoir 1 seule instance d'un objet.
+On ajoute à la classe Database la propriété **private static $instance = null;**
+On ajoute une condition **(self::$instance c'est la façon d'appeler une propriété static dans une classe)**.
+Le if va nous servir à stocker **self::$instance;** lors de la première connexion avec PDO. 
 
+En bref la première connexion est **=== null;**.
+Si on appel une autre fonction **self::$instance;** n'est plus **=== null;** on lui passe la connexion qui est  disponible suite à notre première connexion qui retourne **self::$instance;** , ainsi de suite, à chaque fois qu'il y aura un appel à une fonction.
 
+Voici le code complet :
+
+````php
+
+class Database{
+
+private static $instance =null;
+        /**
+ * 1. Connexion à la base de données avec PDO
+ * Attention, on précise ici deux options :
+ * - Le mode d'erreur : le mode exception permet à PDO de nous prévenir violament quand on fait une connerie ;-)
+ * - Le mode d'exploitation : FETCH_ASSOC veut dire qu'on exploitera les données sous la forme de tableaux associatifs
+ * Return une connexion à la  BDD 
+ * @return PDO quelque chose de type
+ */
+public static function getPdo(): PDO {
+    // si la propriété instance est strictement égal à null (pas d'instance de PDO)
+    if (self::$instance === null){
+        self::$instance = new PDO('mysql:host=localhost;dbname=blogpoo;charset=utf8', 'root', '', [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+            ]);
+        }
+        return self::$instance;
+    }
+   
+    }
+````
+Bon courage !
